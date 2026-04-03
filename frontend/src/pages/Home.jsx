@@ -87,51 +87,88 @@ const Home = () => {
                                 Every transaction is verified directly on the Algorand Testnet blockchain — fully transparent, fully auditable, and impossibly fast.
                             </p>
                         </div>
-                        <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-brand-purple to-brand-violet rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                            <div className="relative glass-card rounded-2xl p-8 flex flex-col gap-6">
-                                <div className="flex gap-4 items-center mb-2">
-                                    <div className="w-12 h-12 rounded-full bg-brand-purple/20 flex items-center justify-center border border-brand-purple/30">
-                                        <span className="text-xl">⚡</span>
+                        <div className="relative">
+                            {/* Animated border glow */}
+                            <div className="absolute -inset-[2px] bg-gradient-to-r from-brand-purple via-brand-violet to-brand-purple rounded-2xl blur-sm opacity-30 animate-pulse"></div>
+                            <div className="relative glass-card rounded-2xl p-6 overflow-hidden">
+                                {/* Background decorative circles */}
+                                <div className="absolute -top-16 -right-16 w-48 h-48 bg-brand-purple/5 rounded-full blur-2xl"></div>
+                                <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-brand-violet/5 rounded-full blur-2xl"></div>
+                                
+                                {/* Header */}
+                                <div className="relative flex items-center gap-3 mb-6">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-purple to-brand-violet flex items-center justify-center shadow-lg shadow-brand-purple/20">
+                                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold text-xl">Platform Metrics</h3>
-                                        <p className="text-gray-500 text-xs uppercase tracking-widest">Real-time stats</p>
+                                        <h3 className="text-white font-bold text-lg">Platform Metrics</h3>
+                                        <p className="text-gray-500 text-[10px] uppercase tracking-[0.2em] font-semibold">Live Statistics</p>
                                     </div>
                                 </div>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-black/40 rounded-xl p-5 border border-white/5 relative overflow-hidden group/stat">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/10 to-transparent opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
-                                        <div className="text-xs text-gray-400 mb-2 font-medium">Available AI Services</div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-serif font-bold text-white">5</span>
-                                            <span className="text-brand-light text-sm font-bold">+</span>
+
+                                {/* Stats grid */}
+                                <div className="relative grid grid-cols-2 gap-3">
+                                    <div className="group/card bg-gradient-to-br from-white/[0.04] to-white/[0.01] rounded-xl p-5 border border-white/[0.06] hover:border-brand-purple/30 transition-all duration-500 hover:scale-[1.02]">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-7 h-7 rounded-lg bg-brand-purple/15 flex items-center justify-center">
+                                                <span className="text-sm">🤖</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Services</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-serif font-bold text-white">5</span>
+                                            <span className="text-brand-light text-xs font-bold">+</span>
                                         </div>
                                     </div>
-                                    <div className="bg-black/40 rounded-xl p-5 border border-white/5 relative overflow-hidden group/stat">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-brand-violet/10 to-transparent opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
-                                        <div className="text-xs text-gray-400 mb-2 font-medium">Minimum Cost</div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-serif font-bold text-white">0.5</span>
-                                            <span className="text-brand-light text-sm font-bold">ALGO</span>
+
+                                    <div className="group/card bg-gradient-to-br from-white/[0.04] to-white/[0.01] rounded-xl p-5 border border-white/[0.06] hover:border-brand-violet/30 transition-all duration-500 hover:scale-[1.02]">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-7 h-7 rounded-lg bg-brand-violet/15 flex items-center justify-center">
+                                                <span className="text-sm">💎</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Min Cost</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-serif font-bold text-white">0.5</span>
+                                            <span className="text-brand-light text-xs font-bold">ALGO</span>
                                         </div>
                                     </div>
-                                    <div className="bg-black/40 rounded-xl p-5 border border-white/5 relative overflow-hidden group/stat">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/10 to-transparent opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
-                                        <div className="text-xs text-gray-400 mb-2 font-medium">Verification Time</div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-serif font-bold text-white">~3</span>
-                                            <span className="text-brand-light text-sm font-bold">SEC</span>
+
+                                    <div className="group/card bg-gradient-to-br from-white/[0.04] to-white/[0.01] rounded-xl p-5 border border-white/[0.06] hover:border-brand-purple/30 transition-all duration-500 hover:scale-[1.02]">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-7 h-7 rounded-lg bg-brand-purple/15 flex items-center justify-center">
+                                                <span className="text-sm">⚡</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Speed</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-serif font-bold text-white">~3</span>
+                                            <span className="text-brand-light text-xs font-bold">SEC</span>
                                         </div>
                                     </div>
-                                    <div className="bg-black/40 rounded-xl p-5 border border-white/5 relative overflow-hidden group/stat">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
-                                        <div className="text-xs text-gray-400 mb-2 font-medium">Blockchain Verified</div>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-4xl font-serif font-bold text-green-400">100</span>
-                                            <span className="text-green-500 text-sm font-bold">%</span>
+
+                                    <div className="group/card bg-gradient-to-br from-white/[0.04] to-white/[0.01] rounded-xl p-5 border border-white/[0.06] hover:border-green-500/30 transition-all duration-500 hover:scale-[1.02]">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-7 h-7 rounded-lg bg-green-500/15 flex items-center justify-center">
+                                                <span className="text-sm">✅</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Verified</span>
                                         </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-serif font-bold text-green-400">100</span>
+                                            <span className="text-green-500 text-xs font-bold">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bottom bar */}
+                                <div className="relative mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                                    <span className="text-[10px] text-gray-600">Algorand Testnet</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                                        <span className="text-[10px] text-green-400 font-semibold">Online</span>
                                     </div>
                                 </div>
                             </div>

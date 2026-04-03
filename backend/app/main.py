@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from app.config import settings
 from app.database import init_db
-from app.routes import services, payment, query
+from app.routes import services, payment, query, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(services.router, prefix="/api/v1")
 app.include_router(payment.router, prefix="/api/v1")
 app.include_router(query.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():

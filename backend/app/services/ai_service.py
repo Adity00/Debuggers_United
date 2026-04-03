@@ -122,3 +122,41 @@ async def get_ai_response(service_id: str, user_prompt: str) -> tuple[str, int]:
         raise RuntimeError(f"OpenAI API error occurred: {e}") from e
     except Exception as e:
         raise RuntimeError(f"Unexpected error interfacing with OpenAI: {e}") from e
+
+
+async def get_ai_response_with_context(service_id: str, messages: list[dict]) -> tuple[str, int]:
+    """
+    Multi-turn conversation support.
+    Takes a list of {role, content} messages and returns AI response with full context.
+    """
+    if service_id not in SERVICE_CATALOG:
+        raise ValueError("Invalid service_id provided for AI inference.")
+        
+    system_prompt = SERVICE_CATALOG[service_id]["system_prompt"]
+    
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    
+    # Build full message array with system prompt + conversation history
+    api_messages = [{"role": "system", "content": system_prompt}]
+    for msg in messages:
+        api_messages.append({"role": msg["role"], "content": msg["content"]})
+    
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=api_messages,
+            max_tokens=1500,
+            temperature=0.7
+        )
+        
+        reply_text = response.choices[0].message.content
+        tokens_used = response.usage.total_tokens
+        
+        return reply_text, tokens_used
+        
+    except openai.RateLimitError as e:
+        raise RuntimeError("OpenAI rate limit exceeded. Please try again later.") from e
+    except openai.APIError as e:
+        raise RuntimeError(f"OpenAI API error occurred: {e}") from e
+    except Exception as e:
+        raise RuntimeError(f"Unexpected error interfacing with OpenAI: {e}") from e

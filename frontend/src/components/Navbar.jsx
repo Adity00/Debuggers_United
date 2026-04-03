@@ -11,7 +11,6 @@ const Navbar = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Reconnect session
         peraWallet.reconnectSession().then((accounts) => {
             peraWallet.connector?.on("disconnect", handleDisconnectWalletClick);
             if (peraWallet.isConnected && accounts.length) {
@@ -48,6 +47,7 @@ const Navbar = () => {
     };
 
     const navLinks = [
+        { to: '/', label: 'Home', isRoute: true },
         { to: '/#about', label: 'About' },
         { to: '/#how-it-works', label: 'How It Works' },
         { to: '/#services-preview', label: 'Services' },
@@ -57,8 +57,12 @@ const Navbar = () => {
     const scrollToSection = (e, hash) => {
         if (location.pathname === '/') {
             e.preventDefault();
-            const el = document.querySelector(hash);
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
+            if (hash === '/') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                const el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
             setIsOpen(false);
         }
     };
@@ -73,24 +77,37 @@ const Navbar = () => {
                 </Link>
 
                 {/* Desktop Nav */}
-                <div className="hidden md:flex items-center gap-8">
+                <div className="hidden md:flex items-center gap-6">
                     {navLinks.map(link => (
-                        <a
-                            key={link.label}
-                            href={link.to}
-                            onClick={(e) => scrollToSection(e, link.to.replace('/', ''))}
-                            className="text-sm text-gray-400 hover:text-white transition-colors"
-                        >
-                            {link.label}
-                        </a>
+                        link.isRoute ? (
+                            <Link
+                                key={link.label}
+                                to={link.to}
+                                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                className="text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                {link.label}
+                            </Link>
+                        ) : (
+                            <a
+                                key={link.label}
+                                href={link.to}
+                                onClick={(e) => scrollToSection(e, link.to.replace('/', ''))}
+                                className="text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                {link.label}
+                            </a>
+                        )
                     ))}
                 </div>
 
                 <div className="hidden md:flex items-center gap-3">
                     {accountAddress ? (
                         <>
-                            <Link to="/services" className="text-sm text-gray-300 hover:text-white mr-4">Dashboard</Link>
-                            <button onClick={handleDisconnectWalletClick} className="btn-secondary text-sm !px-4 !py-2">
+                            <Link to="/services" className="btn-primary text-sm !px-5 !py-2.5">
+                                Dashboard
+                            </Link>
+                            <button onClick={handleDisconnectWalletClick} className="btn-secondary text-sm !px-4 !py-2.5">
                                 Disconnect
                             </button>
                         </>
@@ -115,19 +132,32 @@ const Navbar = () => {
             {isOpen && (
                 <div className="md:hidden mt-2 mx-auto max-w-6xl floating-nav rounded-2xl p-6 space-y-4 animate-fade-in">
                     {navLinks.map(link => (
-                        <a
-                            key={link.label}
-                            href={link.to}
-                            onClick={(e) => scrollToSection(e, link.to.replace('/', ''))}
-                            className="block text-gray-400 hover:text-white transition-colors"
-                        >
-                            {link.label}
-                        </a>
+                        link.isRoute ? (
+                            <Link
+                                key={link.label}
+                                to={link.to}
+                                className="block text-gray-400 hover:text-white transition-colors"
+                                onClick={() => { setIsOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            >
+                                {link.label}
+                            </Link>
+                        ) : (
+                            <a
+                                key={link.label}
+                                href={link.to}
+                                onClick={(e) => scrollToSection(e, link.to.replace('/', ''))}
+                                className="block text-gray-400 hover:text-white transition-colors"
+                            >
+                                {link.label}
+                            </a>
+                        )
                     ))}
                     {accountAddress ? (
                         <>
-                            <Link to="/services" className="block text-center text-gray-300 hover:text-white mt-4" onClick={() => setIsOpen(false)}>Dashboard</Link>
-                            <button onClick={(e) => { handleDisconnectWalletClick(e); setIsOpen(false); }} className="btn-secondary block w-full text-center text-sm !py-2.5 mt-4">
+                            <Link to="/services" className="btn-primary block text-center text-sm !py-2.5 mt-4" onClick={() => setIsOpen(false)}>
+                                Dashboard
+                            </Link>
+                            <button onClick={(e) => { handleDisconnectWalletClick(e); setIsOpen(false); }} className="btn-secondary block w-full text-center text-sm !py-2.5 mt-2">
                                 Disconnect
                             </button>
                         </>

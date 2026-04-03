@@ -31,15 +31,36 @@ async def init_db():
                 completed_at TEXT
             )
         ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS conversations (
+                conversation_id TEXT PRIMARY KEY,
+                service_id TEXT NOT NULL,
+                wallet_address TEXT NOT NULL,
+                tx_id TEXT,
+                paid INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                total_cost_usd REAL DEFAULT 0.0,
+                created_at TEXT NOT NULL
+            )
+        ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id),
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                tokens_used INTEGER DEFAULT 0,
+                cost_usd REAL DEFAULT 0.0,
+                created_at TEXT NOT NULL
+            )
+        ''')
         await db.commit()
 
-async def create_session(session_id: str, service_id: str, wallet_address: str, prompt: str, expires_at: str):
-    """
-    Inserts a newly generated session into SQLite database.
-    """
+# ── Legacy session functions (kept for backward compatibility) ──
+
+async def create_session(session_id, service_id, wallet_address, prompt, expires_at):
     from datetime import datetime, timezone
     created_at = datetime.now(timezone.utc).isoformat()
-    
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('''
             INSERT INTO sessions(session_id, service_id, wallet_address, prompt, status, created_at, expires_at)
@@ -47,31 +68,21 @@ async def create_session(session_id: str, service_id: str, wallet_address: str, 
         ''', (session_id, service_id, wallet_address, prompt, "pending", created_at, expires_at))
         await db.commit()
 
-async def get_session(session_id: str) -> dict:
-    """
-    Fetches a session row back as a dictionary or None.
-    """
+async def get_session(session_id):
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,)) as cursor:
             row = await cursor.fetchone()
             return dict(row) if row else None
 
-async def update_session_status(session_id: str, status: str):
-    """
-    Updates the string enum status of a given session.
-    """
+async def update_session_status(session_id, status):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("UPDATE sessions SET status = ? WHERE session_id = ?", (status, session_id))
         await db.commit()
 
-async def save_query_result(session_id: str, tx_group_id: str, ai_response: str, tokens_used: int):
-    """
-    Links a consumed session to a completed query_log.
-    """
+async def save_query_result(session_id, tx_group_id, ai_response, tokens_used):
     from datetime import datetime, timezone
     completed_at = datetime.now(timezone.utc).isoformat()
-    
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('''
             INSERT INTO query_log (session_id, tx_group_id, ai_response, tokens_used, completed_at)
@@ -79,11 +90,79 @@ async def save_query_result(session_id: str, tx_group_id: str, ai_response: str,
         ''', (session_id, tx_group_id, ai_response, tokens_used, completed_at))
         await db.commit()
 
-async def is_tx_already_used(tx_group_id: str) -> bool:
-    """
-    Prevents replay attacks by checking if a tx_group_id is already stored in the DB.
-    """
+async def is_tx_already_used(tx_group_id):
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT 1 FROM query_log WHERE tx_group_id = ?", (tx_group_id,)) as cursor:
             row = await cursor.fetchone()
             return row is not None
+
+# ── New conversation functions ──
+
+async def create_conversation(conversation_id, service_id, wallet_address):
+    from datetime import datetime, timezone
+    created_at = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            INSERT INTO conversations(conversation_id, service_id, wallet_address, created_at)
+            VALUES (?, ?, ?, ?)
+        ''', (conversation_id, service_id, wallet_address, created_at))
+        await db.commit()
+
+async def mark_conversation_paid(conversation_id, tx_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE conversations SET paid = 1, tx_id = ? WHERE conversation_id = ?",
+            (tx_id, conversation_id)
+        )
+        await db.commit()
+
+async def get_conversation(conversation_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM conversations WHERE conversation_id = ?", (conversation_id,)) as cursor:
+            row = await cursor.fetchone()
+            return dict(row) if row else None
+
+async def add_message(conversation_id, role, content, tokens_used=0, cost_usd=0.0):
+    from datetime import datetime, timezone
+    created_at = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            INSERT INTO messages(conversation_id, role, content, tokens_used, cost_usd, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (conversation_id, role, content, tokens_used, cost_usd, created_at))
+        # Update conversation totals
+        await db.execute('''
+            UPDATE conversations
+            SET total_tokens = total_tokens + ?, total_cost_usd = total_cost_usd + ?
+            WHERE conversation_id = ?
+        ''', (tokens_used, cost_usd, conversation_id))
+        await db.commit()
+
+async def get_conversation_messages(conversation_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM messages WHERE conversation_id = ? ORDER BY id ASC",
+            (conversation_id,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def get_wallet_conversations(wallet_address, service_id=None):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if service_id:
+            async with db.execute(
+                "SELECT * FROM conversations WHERE wallet_address = ? AND service_id = ? ORDER BY created_at DESC LIMIT 20",
+                (wallet_address, service_id)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
+        else:
+            async with db.execute(
+                "SELECT * FROM conversations WHERE wallet_address = ? ORDER BY created_at DESC LIMIT 20",
+                (wallet_address,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]

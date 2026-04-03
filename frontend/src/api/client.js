@@ -44,3 +44,34 @@ export const getHealth = async () => {
     const res = await fetch(`${BASE_URL}/health`);
     return handleResponse(res);
 };
+
+// ── New Chat API ──
+
+export const sendChat = async (serviceId, walletAddress, prompt, conversationId = null, txId = null) => {
+    const body = {
+        service_id: serviceId,
+        wallet_address: walletAddress,
+        prompt
+    };
+    if (conversationId) body.conversation_id = conversationId;
+    if (txId) body.tx_id = txId;
+
+    const res = await fetch(`${BASE_URL}/api/v1/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    return handleResponse(res);
+};
+
+export const getConversationHistory = async (walletAddress, serviceId = null) => {
+    let url = `${BASE_URL}/api/v1/conversations/${walletAddress}`;
+    if (serviceId) url += `?service_id=${serviceId}`;
+    const res = await fetch(url);
+    return handleResponse(res);
+};
+
+export const getConversationMessages = async (walletAddress, conversationId) => {
+    const res = await fetch(`${BASE_URL}/api/v1/conversations/${walletAddress}/${conversationId}/messages`);
+    return handleResponse(res);
+};

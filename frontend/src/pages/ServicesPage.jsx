@@ -37,7 +37,7 @@ const ServicesPage = () => {
     }, [wallet]);
 
     const handleBuy = (service) => {
-        navigate(`/pay/${service.id}`, { state: { service } });
+        navigate(`/workspace/${service.id}`, { state: { service } });
     };
 
     if (!wallet) {
