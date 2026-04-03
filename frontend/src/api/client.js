@@ -75,3 +75,17 @@ export const getConversationMessages = async (walletAddress, conversationId) => 
     const res = await fetch(`${BASE_URL}/api/v1/conversations/${walletAddress}/${conversationId}/messages`);
     return handleResponse(res);
 };
+
+export const getWalletPrepayBalance = async (walletAddress) => {
+    const res = await fetch(`${BASE_URL}/api/v1/wallet/${walletAddress}/balance`);
+    return handleResponse(res);
+};
+
+export const depositWalletFunds = async (walletAddress, txGroupId) => {
+    const res = await fetch(`${BASE_URL}/api/v1/wallet/deposit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: walletAddress, tx_group_id: txGroupId })
+    });
+    return handleResponse(res);
+};

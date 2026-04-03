@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { sendChat, getPaymentInfo, getConversationHistory, getServices } from '../api/client';
+import { sendChat, getPaymentInfo, getConversationHistory, getServices, getWalletPrepayBalance, depositWalletFunds, getConversationMessages } from '../api/client';
 
 const ICONS = {
     code_review: '🔍', essay_writer: '✍️', data_analyst: '📊',
@@ -32,13 +32,12 @@ const WorkspacePage = () => {
     const [history, setHistory] = useState([]);
     const [payingStatus, setPayingStatus] = useState('');
 
-    // Fetch balance using plain REST API — no algosdk dependency
+    const [isDepositing, setIsDepositing] = useState(false);
+
     const fetchBalance = useCallback(async (address) => {
         try {
-            const resp = await fetch(`${ALGOD_API}/v2/accounts/${address}`);
-            if (!resp.ok) return 0;
-            const data = await resp.json();
-            return data.amount || 0;
+            const data = await getWalletPrepayBalance(address);
+            return data.balance_microalgo || 0;
         } catch (e) {
             console.warn("Balance fetch failed:", e);
             return 0;
@@ -77,9 +76,87 @@ const WorkspacePage = () => {
         getConversationHistory(wallet, service.id).then(setHistory).catch(() => {});
     }, [service, wallet, fetchBalance]);
 
+    const loadConversation = async (convId) => {
+        try {
+            setIsLoading(true);
+            const data = await getConversationMessages(wallet, convId);
+            setConversationId(convId);
+            setMessages(data.messages);
+            setTotalTokens(data.total_tokens);
+            setTotalCost(data.total_cost_usd);
+            setIsPaid(true);
+            
+            // Sync URL query state safely
+            const u = new URL(window.location);
+            u.searchParams.set('session', convId);
+            window.history.pushState({}, '', u);
+            
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        } catch(e) {
+            setError("Failed to load session: "+e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const sessionParam = queryParams.get('session');
+        if (sessionParam && sessionParam !== conversationId && !isLoading && wallet) {
+            loadConversation(sessionParam);
+        }
+    }, [location.search, wallet]);
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    const handleDeposit = async () => {
+        try {
+            setIsDepositing(true);
+            setError(null);
+            
+            const { PeraWalletConnect } = await import('@perawallet/connect');
+            const algosdk = (await import('algosdk')).default;
+
+            let toAddr = paymentInfo?.contract_address;
+            if (!toAddr) {
+                const freshInfo = await getPaymentInfo(service.id);
+                setPaymentInfo(freshInfo);
+                toAddr = freshInfo?.contract_address;
+            }
+
+            const pw = new PeraWalletConnect();
+            let accounts = [];
+            try { accounts = await pw.reconnectSession(); } catch (_) {}
+            if (!accounts || !accounts.length) accounts = await pw.connect();
+            if (accounts[0] !== wallet) throw new Error("Wallet mismatch. Please reconnect the correct wallet.");
+
+            const algodClient = new algosdk.Algodv2('', ALGOD_API, '');
+            const params = await algodClient.getTransactionParams().do();
+            
+            const amountMicro = 1_000_000; // 1 ALGO
+            const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+                sender: wallet, receiver: toAddr, amount: amountMicro, suggestedParams: params,
+            });
+            const signed = await pw.signTransaction([[{ txn, signers: [wallet] }]]);
+            const { txId } = await algodClient.sendRawTransaction(signed).do();
+            
+            setPayingStatus("Verifying your deposit on the Algorand Testnet...");
+            await algosdk.waitForConfirmation(algodClient, txId, 4);
+
+            await depositWalletFunds(wallet, txId);
+            const bal = await fetchBalance(wallet);
+            setBalance(bal);
+            setPayingStatus("");
+
+        } catch (e) {
+            setError(e.message || "Deposit failed");
+            setPayingStatus("");
+        } finally {
+            setIsDepositing(false);
+        }
+    };
 
     const handleSendPrompt = async (e) => {
         e.preventDefault();
@@ -126,7 +203,11 @@ const WorkspacePage = () => {
             }).catch(() => {});
 
         } catch (err) {
-            setError(err.message || "Request failed");
+            if (err.message && err.message.includes("Insufficient prepay balance")) {
+                setError("Insufficient prepay balance. Please deposit 1 ALGO using the deposit button above.");
+            } else {
+                setError(err.message || "Request failed");
+            }
             setMessages(prev => prev.slice(0, -1));
             setPrompt(userPrompt);
         } finally {
@@ -135,7 +216,6 @@ const WorkspacePage = () => {
         }
     };
 
-    // Loading state while fetching service
     if (serviceLoading || !service) {
         return (
             <div className="min-h-screen flex items-center justify-center pt-24">
@@ -178,10 +258,15 @@ const WorkspacePage = () => {
                             <div className="text-2xl font-serif font-bold text-brand-light">${totalCost ? totalCost.toFixed(10) : '0.0000'}</div>
                             <div className="text-[10px] text-gray-600 mt-1">$0.00000000025 / token</div>
                         </div>
-                        <div className="glass-card rounded-xl p-4 flex-1 min-w-[140px]">
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Wallet Balance</div>
-                            <div className="text-2xl font-serif font-bold text-white">{balanceAlgo}</div>
-                            <div className="text-[10px] text-gray-600 mt-1">ALGO (Testnet)</div>
+                        <div className="glass-card rounded-xl p-4 flex-1 min-w-[140px] flex flex-col justify-between">
+                            <div>
+                                <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Prepay Balance</div>
+                                <div className="text-2xl font-serif font-bold text-white">{balanceAlgo}</div>
+                                <div className="text-[10px] text-gray-600 mt-1">ALGO (Platform)</div>
+                            </div>
+                            <button onClick={handleDeposit} disabled={isDepositing} className="mt-2 text-xs bg-brand-purple/20 hover:bg-brand-purple/40 text-brand-light py-1 px-2 rounded w-full transition-colors cursor-pointer">
+                                {isDepositing ? 'Depositing...' : '+ Deposit 1 ALGO'}
+                            </button>
                         </div>
                         {isPaid && (
                             <div className="glass-card rounded-xl p-4 flex-1 min-w-[140px]">
@@ -206,7 +291,8 @@ const WorkspacePage = () => {
                                         <div className="text-5xl mb-4">{ICONS[service.id] || '✨'}</div>
                                         <h3 className="text-xl font-bold text-white mb-2">Start a conversation</h3>
                                         <p className="text-sm text-gray-500 max-w-md">
-                                            Type your first prompt below. Pera Wallet will request <strong className="text-brand-light">{service.price_algo} ALGO</strong> payment to activate this session.
+                                            Costs are automatically deducted from your prepay balance at <strong>$0.00000000025 per token</strong>.
+                                            Make sure you deposit ALGO first!
                                         </p>
                                     </div>
                                 </div>
@@ -276,9 +362,13 @@ const WorkspacePage = () => {
                         ) : (
                             <div className="space-y-2">
                                 {history.map((h) => (
-                                    <div key={h.conversation_id} className={`p-3 rounded-xl border cursor-pointer transition-all text-xs hover:border-brand-purple/30 ${
-                                        h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10' : 'border-white/5 hover:bg-white/5'
-                                    }`}>
+                                    <div 
+                                        key={h.conversation_id} 
+                                        onClick={() => navigate(`?session=${h.conversation_id}`, { replace: true })}
+                                        className={`p-3 rounded-xl border cursor-pointer transition-all text-xs hover:border-brand-purple/30 ${
+                                            h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10' : 'border-white/5 hover:bg-white/5'
+                                        }`}
+                                    >
                                         <div className="flex justify-between mb-1">
                                             <span className="text-gray-400 font-semibold">{h.total_tokens} tokens</span>
                                             <span className="text-gray-600">${h.total_cost_usd ? h.total_cost_usd.toFixed(10) : '0.0000'}</span>

@@ -54,6 +54,12 @@ async def init_db():
                 created_at TEXT NOT NULL
             )
         ''')
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS wallet_balances (
+                wallet_address TEXT PRIMARY KEY,
+                balance_microalgo INTEGER DEFAULT 0
+            )
+        ''')
         await db.commit()
 
 # ── Legacy session functions (kept for backward compatibility) ──
@@ -166,3 +172,30 @@ async def get_wallet_conversations(wallet_address, service_id=None):
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [dict(r) for r in rows]
+
+# ── Wallet Balance functions ──
+
+async def get_wallet_balance(wallet_address):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT balance_microalgo FROM wallet_balances WHERE wallet_address = ?", (wallet_address,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+async def add_wallet_balance(wallet_address, amount_microalgo):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            INSERT INTO wallet_balances (wallet_address, balance_microalgo) 
+            VALUES (?, ?) 
+            ON CONFLICT(wallet_address) DO UPDATE SET balance_microalgo = balance_microalgo + ?
+        ''', (wallet_address, amount_microalgo, amount_microalgo))
+        await db.commit()
+
+async def deduct_wallet_balance(wallet_address, amount_microalgo):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            UPDATE wallet_balances 
+            SET balance_microalgo = balance_microalgo - ? 
+            WHERE wallet_address = ?
+        ''', (amount_microalgo, wallet_address))
+        await db.commit()
+

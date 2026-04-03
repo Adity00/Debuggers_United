@@ -86,6 +86,13 @@ async def chat(data: ChatIn):
     # Save user message
     await add_message(conversation_id, "user", data.prompt.strip())
 
+    from app.database import get_wallet_balance, deduct_wallet_balance
+    current_balance = await get_wallet_balance(data.wallet_address)
+    
+    # Require at least 50,000 microalgo (0.05 ALGO) to start a chat
+    if current_balance < 50000:
+        raise HTTPException(status_code=402, detail="Insufficient prepay balance. Please deposit ALGO.", headers={"X-Insufficient-Balance": "true"})
+
     # Fetch full conversation history for context
     all_messages = await get_conversation_messages(conversation_id)
     context_messages = [{"role": m["role"], "content": m["content"]} for m in all_messages]
@@ -97,6 +104,11 @@ async def chat(data: ChatIn):
         raise HTTPException(status_code=502, detail=str(e))
 
     cost_usd = round(tokens_used * COST_PER_TOKEN, 13)
+    
+    # Calculate and auto-deduct off-chain balance seamlessly
+    cost_algo = cost_usd / 0.20 # Assuming 1 ALGO = $0.20
+    cost_microalgo = max(0, int(cost_algo * 1_000_000))
+    await deduct_wallet_balance(data.wallet_address, cost_microalgo)
 
     # Save AI response
     await add_message(conversation_id, "assistant", ai_text, tokens_used, cost_usd)
