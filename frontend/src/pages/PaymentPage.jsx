@@ -13,7 +13,8 @@ const PaymentPage = () => {
     
     const { 
         machineState, paymentInfo, aiResponse, error, isLoading,
-        setPaymentInfo, initiatePayment, setTxGroupId, txGroupId, submitForVerification 
+        setPaymentInfo, initiatePayment, setTxGroupId, txGroupId, submitForVerification,
+        selectService
     } = usePayment();
 
     useEffect(() => {
@@ -22,10 +23,12 @@ const PaymentPage = () => {
             return;
         }
         
+        selectService(service);
+        
         getPaymentInfo(service.id)
             .then(setPaymentInfo)
             .catch(err => console.error("Failed to load QR", err));
-    }, [service, navigate, setPaymentInfo]);
+    }, [service, navigate, setPaymentInfo, selectService]);
 
     useEffect(() => {
         if (machineState === 'SUCCESS' && aiResponse) {
