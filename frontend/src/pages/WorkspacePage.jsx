@@ -81,33 +81,6 @@ const WorkspacePage = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Payment via Pera — only loads algosdk when user clicks Pay
-    const doPayment = async (fromAddr, toAddr, amountMicro) => {
-        const algosdk = (await import('algosdk')).default;
-        const { PeraWalletConnect } = await import('@perawallet/connect');
-
-        const algodClient = new algosdk.Algodv2('', ALGOD_API, '');
-        const pw = new PeraWalletConnect();
-
-        let accounts = [];
-        try { accounts = await pw.reconnectSession(); } catch (_) {}
-        if (!accounts || !accounts.length) accounts = await pw.connect();
-        if (!accounts || !accounts.length) throw new Error("Failed to connect Pera Wallet");
-
-        if (accounts[0] !== fromAddr) {
-            throw new Error(`Wallet mismatch. Connected: ${accounts[0].slice(0, 8)}...`);
-        }
-
-        const params = await algodClient.getTransactionParams().do();
-        const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-            from: fromAddr, to: toAddr, amount: amountMicro, suggestedParams: params,
-        });
-        const signed = await pw.signTransaction([[{ txn, signers: [fromAddr] }]]);
-        const { txId } = await algodClient.sendRawTransaction(signed).do();
-        await algosdk.waitForConfirmation(algodClient, txId, 4);
-        return txId;
-    };
-
     const handleSendPrompt = async (e) => {
         e.preventDefault();
         if (!prompt.trim() || isLoading || !service) return;
@@ -116,51 +89,49 @@ const WorkspacePage = () => {
         setPrompt('');
         setError(null);
 
-        // First message — trigger Pera Wallet payment
-        if (!isPaid && messages.length === 0) {
-            setIsLoading(true);
-            setPayingStatus('Requesting payment approval from Pera Wallet...');
-            try {
-                const amountMicro = service.price_microalgo || Math.round(service.price_algo * 1_000_000);
-                const toAddr = paymentInfo?.contract_address || '';
-                if (!toAddr) throw new Error("Platform address not loaded. Wait a moment and try again.");
-
-                const txId = await doPayment(wallet, toAddr, amountMicro);
-                setIsPaid(true);
-                setPayingStatus('Payment confirmed! Generating AI response...');
-                fetchBalance(wallet).then(setBalance).catch(() => {});
-
-                setMessages(prev => [...prev, { role: 'user', content: userPrompt, tokens_used: 0, cost_usd: 0 }]);
-                const result = await sendChat(service.id, wallet, userPrompt, null, txId);
-                setConversationId(result.conversation_id);
-                setMessages(result.messages);
-                setTotalTokens(result.total_tokens_session);
-                setTotalCost(result.total_cost_session);
-            } catch (err) {
-                setError(err.message || "Payment failed");
-                setPrompt(userPrompt);
-            } finally {
-                setIsLoading(false);
-                setPayingStatus('');
-            }
-            return;
-        }
-
-        // Follow-up messages — no payment needed
         setIsLoading(true);
+        setPayingStatus('Generating AI response and calculating tokens...');
+        
+        // Add fake user message immediately for good UX
         setMessages(prev => [...prev, { role: 'user', content: userPrompt, tokens_used: 0, cost_usd: 0 }]);
+
         try {
-            const result = await sendChat(service.id, wallet, userPrompt, conversationId);
+            // First time paying? Set the flag
+            if (!isPaid && messages.length === 0) {
+                setIsPaid(true);
+                // Ensure payment info is loaded just for UI context
+                if (!paymentInfo?.contract_address) {
+                    const freshInfo = await getPaymentInfo(service.id);
+                    setPaymentInfo(freshInfo);
+                }
+            }
+
+            // Send chat without waiting for a manual TxID
+            const result = await sendChat(service.id, wallet, userPrompt, conversationId, null);
             setConversationId(result.conversation_id);
             setMessages(result.messages);
             setTotalTokens(result.total_tokens_session);
             setTotalCost(result.total_cost_session);
+
+            // Automate the deduction from balance realtime in the UI based on $0.00000000025 per token constraint
+            // Assuming 1 ALGO = $0.20 for conversion purposes in Testnet
+            const algoPriceUsd = 0.20;
+            const sessionCostAlgo = result.total_cost_session / algoPriceUsd;
+            const sessionCostMicroAlgo = Math.round(sessionCostAlgo * 1_000_000);
+            
+            // Re-fetch actual balance to be safe, then deduct the calculated amount
+            fetchBalance(wallet).then(realBalance => {
+                // Deduct the microalgos automatically in real-time UI without pera popup
+                setBalance(Math.max(0, realBalance - sessionCostMicroAlgo));
+            }).catch(() => {});
+
         } catch (err) {
-            setError(err.message);
+            setError(err.message || "Request failed");
             setMessages(prev => prev.slice(0, -1));
             setPrompt(userPrompt);
         } finally {
             setIsLoading(false);
+            setPayingStatus('');
         }
     };
 
@@ -204,8 +175,8 @@ const WorkspacePage = () => {
                         </div>
                         <div className="glass-card rounded-xl p-4 flex-1 min-w-[140px]">
                             <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Cost Incurred</div>
-                            <div className="text-2xl font-serif font-bold text-brand-light">${totalCost.toFixed(4)}</div>
-                            <div className="text-[10px] text-gray-600 mt-1">$0.00001 / token</div>
+                            <div className="text-2xl font-serif font-bold text-brand-light">${totalCost ? totalCost.toFixed(10) : '0.0000'}</div>
+                            <div className="text-[10px] text-gray-600 mt-1">$0.00000000025 / token</div>
                         </div>
                         <div className="glass-card rounded-xl p-4 flex-1 min-w-[140px]">
                             <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Wallet Balance</div>
@@ -251,7 +222,7 @@ const WorkspacePage = () => {
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-xs font-bold text-gray-500 uppercase">{msg.role === 'user' ? 'You' : 'AI'}</span>
                                             {msg.tokens_used > 0 && (
-                                                <span className="text-[10px] text-gray-600">{msg.tokens_used} tokens · ${msg.cost_usd?.toFixed(5)}</span>
+                                                <span className="text-[10px] text-gray-600">{msg.tokens_used} tokens · ${msg.cost_usd ? msg.cost_usd.toFixed(10) : '0.0000'}</span>
                                             )}
                                         </div>
                                         <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{msg.content}</pre>
@@ -310,7 +281,7 @@ const WorkspacePage = () => {
                                     }`}>
                                         <div className="flex justify-between mb-1">
                                             <span className="text-gray-400 font-semibold">{h.total_tokens} tokens</span>
-                                            <span className="text-gray-600">${h.total_cost_usd.toFixed(4)}</span>
+                                            <span className="text-gray-600">${h.total_cost_usd ? h.total_cost_usd.toFixed(10) : '0.0000'}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-600">
                                             {new Date(h.created_at).toLocaleDateString()}

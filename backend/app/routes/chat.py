@@ -12,7 +12,7 @@ from app.database import (
 )
 from app.services.ai_service import SERVICE_CATALOG, get_ai_response_with_context
 
-COST_PER_TOKEN = 0.00001  # $0.00001 per token
+COST_PER_TOKEN = 0.00000000025  # $0.00000000025 per token
 
 router = APIRouter(tags=["Chat"])
 
@@ -96,7 +96,7 @@ async def chat(data: ChatIn):
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    cost_usd = round(tokens_used * COST_PER_TOKEN, 6)
+    cost_usd = round(tokens_used * COST_PER_TOKEN, 13)
 
     # Save AI response
     await add_message(conversation_id, "assistant", ai_text, tokens_used, cost_usd)
