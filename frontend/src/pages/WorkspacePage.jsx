@@ -295,76 +295,131 @@ const WorkspacePage = () => {
     const balanceAlgo = (balance / 1_000_000).toFixed(4);
 
     return (
-        <div className="min-h-screen pt-12 pb-6 px-4 flex flex-col">
+        <div className="min-h-screen pt-14 pb-6 px-4 sm:px-6 flex flex-col">
             <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
-                <button onClick={() => navigate('/services')} className="text-gray-500 hover:text-white text-sm transition-colors mb-4 flex items-center gap-2 self-start">
-                    ← Back to Services
+
+                {/* Back Button */}
+                <button
+                    onClick={() => navigate('/services')}
+                    className="group text-gray-500 hover:text-white text-sm transition-all mb-5 flex items-center gap-1.5 self-start"
+                >
+                    <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+                    <span>Back to Services</span>
                 </button>
 
-                {/* Header: Service card (left) + Stats (right) */}
-                <div className="flex flex-col lg:flex-row gap-4 mb-4">
-                    <div className="glass-card rounded-2xl p-4 flex items-center gap-4 lg:w-80 flex-shrink-0">
-                        <div className="text-3xl">{ICONS[service.id] || '✨'}</div>
-                        <div>
-                            <h2 className="text-lg font-bold text-white">{service.name}</h2>
-                            <p className="text-[10px] text-gray-400 leading-tight">{service.description}</p>
-                            <div className="text-brand-light font-bold text-sm mt-1">{service.price_algo} ALGO / session</div>
+                {/* ── Header Row ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mb-5">
+
+                    {/* Service Card */}
+                    <div className="lg:col-span-4 glass-card rounded-2xl p-5 flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center text-2xl flex-shrink-0">
+                            {ICONS[service.id] || '✨'}
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-bold text-white leading-tight">{service.name}</h2>
+                            <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-2">{service.description}</p>
+                            <span className="inline-block mt-2 text-xs font-bold text-brand-light bg-brand-purple/10 border border-brand-purple/20 px-2.5 py-0.5 rounded-full">
+                                {service.price_algo} ALGO / session
+                            </span>
                         </div>
                     </div>
 
-                    <div className="flex gap-2 flex-grow flex-wrap">
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Tokens Used</div>
-                            <div className="text-xl font-serif font-bold text-white">{totalTokens.toLocaleString()}</div>
+                    {/* Stat Cards */}
+                    <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+                        {/* Tokens */}
+                        <div className="glass-card rounded-xl p-4 hover:border-purple-500/15 transition-colors">
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                                <span>📊</span> Tokens
+                            </div>
+                            <div className="text-xl font-bold text-white">{totalTokens.toLocaleString()}</div>
                         </div>
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Cost Incurred</div>
-                            <div className="text-xl font-serif font-bold text-brand-light">${totalCost ? totalCost.toFixed(8) : '0.0000'}</div>
+
+                        {/* Cost */}
+                        <div className="glass-card rounded-xl p-4 hover:border-cyan-500/15 transition-colors">
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                                <span>💰</span> Cost
+                            </div>
+                            <div className="text-xl font-bold text-brand-light">${totalCost ? totalCost.toFixed(4) : '0.0000'}</div>
                         </div>
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px] flex flex-col justify-between">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Balance</div>
-                            <div className="flex items-center justify-between">
-                                <div className="text-xl font-serif font-bold text-white">{balanceAlgo}</div>
-                                <div className="flex gap-1">
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0.1"
-                                        value={depositInput}
-                                        onChange={(e) => setDepositInput(e.target.value)}
-                                        className="w-12 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[10px] text-white"
-                                    />
-                                    <button onClick={handleDeposit} disabled={isDepositing} className="text-[10px] bg-brand-purple/20 text-brand-light px-2 rounded">
-                                        +
-                                    </button>
-                                </div>
+
+                        {/* Balance + Deposit */}
+                        <div className="glass-card rounded-xl p-4 hover:border-green-500/15 transition-colors">
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                                <span>💎</span> Balance
+                            </div>
+                            <div className="text-xl font-bold text-white mb-2">{balanceAlgo}</div>
+                            <div className="flex gap-1.5">
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    value={depositInput}
+                                    onChange={(e) => setDepositInput(e.target.value)}
+                                    className="w-14 bg-black/50 border border-white/10 rounded-md px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-brand-purple/40 transition-colors"
+                                />
+                                <button
+                                    onClick={handleDeposit}
+                                    disabled={isDepositing}
+                                    className="text-[10px] bg-green-500/15 text-green-400 border border-green-500/20 px-2.5 py-1 rounded-md font-bold hover:bg-green-500/25 transition-colors disabled:opacity-40"
+                                >
+                                    {isDepositing ? '…' : '+ Add'}
+                                </button>
                             </div>
                         </div>
-                        {isPaid && (
-                            <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                                <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Session</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                                    <span className="text-xs font-bold text-green-400">Active</span>
-                                </div>
+
+                        {/* Session */}
+                        <div className="glass-card rounded-xl p-4 hover:border-amber-500/15 transition-colors">
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                                <span>⚡</span> Session
                             </div>
-                        )}
+                            {isPaid ? (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                    <span className="text-sm font-bold text-green-400">Active</span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <div className="w-2 h-2 rounded-full bg-gray-600"></div>
+                                    <span className="text-sm font-medium text-gray-500">Ready</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Main Content */}
+                {/* Status Toast */}
+                {payingStatus && (
+                    <div className="mb-4 flex items-center gap-3 bg-brand-purple/5 border border-brand-purple/10 rounded-xl px-4 py-2.5">
+                        <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                        <span className="text-sm text-brand-light">{payingStatus}</span>
+                    </div>
+                )}
+
+                {/* ── Main: Chat + Sidebar ── */}
                 <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-0">
+
+                    {/* Chat Panel */}
                     <div className="flex-grow flex flex-col min-h-0 glass-card rounded-2xl overflow-hidden">
-                        <div className="flex-grow overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+                        <div className="flex-grow overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+
+                            {/* Empty State */}
                             {messages.length === 0 && !isLoading && (
                                 <div className="flex items-center justify-center h-full">
-                                    <div className="text-center py-16">
-                                        <div className="text-5xl mb-4">{ICONS[service.id] || '✨'}</div>
-                                        <h3 className="text-xl font-bold text-white mb-2">Start a conversation</h3>
-                                        <p className="text-sm text-gray-500 max-w-md">
+                                    <div className="text-center py-14">
+                                        <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-brand-purple/15 to-cyan-500/10 border border-white/5 flex items-center justify-center">
+                                            <span className="text-3xl">{ICONS[service.id] || '✨'}</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white mb-2">Start a conversation</h3>
+                                        <p className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">
                                             Costs are automatically deducted from your prepay balance.
                                             Make sure you deposit ALGO first!
                                         </p>
+                                        <div className="mt-4 flex items-center justify-center gap-2">
+                                            <div className="h-px w-6 bg-gray-800"></div>
+                                            <span className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">Powered by AI</span>
+                                            <div className="h-px w-6 bg-gray-800"></div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -446,8 +501,10 @@ const WorkspacePage = () => {
                         </div>
 
                         {error && (
-                            <div className="mx-6 mb-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm">
-                                ⚠️ {error}
+                            <div className="mx-6 mb-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm flex items-center gap-2">
+                                <span>⚠️</span>
+                                <span className="flex-grow">{error}</span>
+                                <button onClick={() => setError(null)} className="text-red-400/50 hover:text-red-400 transition-colors text-xs">✕</button>
                             </div>
                         )}
 
@@ -457,25 +514,33 @@ const WorkspacePage = () => {
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder={messages.length === 0 ? "Enter your prompt to start..." : "Type a follow-up..."}
-                                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-purple/50 transition-colors"
+                                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-5 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-purple/40 focus:ring-1 focus:ring-brand-purple/10 transition-all"
                                 disabled={isLoading}
                                 maxLength={2000}
                             />
                             <button
                                 type="submit"
                                 disabled={isLoading || !prompt.trim()}
-                                className="btn-primary !rounded-xl !px-6 !py-3 text-sm disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                                className="btn-primary !rounded-xl !px-6 !py-3 text-sm disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
                             >
                                 {isLoading ? '...' : messages.length === 0 ? 'Pay & Send' : 'Send ▶'}
                             </button>
                         </form>
                     </div>
 
-
+                    {/* Session History */}
                     <div className="lg:w-64 flex-shrink-0 glass-card rounded-2xl p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Session History</h3>
+                        <div className="flex items-center gap-1.5 mb-3">
+                            <span className="text-xs">🕘</span>
+                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Session History</h3>
+                        </div>
                         {history.length === 0 ? (
-                            <p className="text-xs text-gray-600">No previous sessions yet.</p>
+                            <div className="text-center py-6">
+                                <div className="w-8 h-8 mx-auto mb-2 rounded-lg bg-white/5 flex items-center justify-center">
+                                    <span className="text-sm opacity-30">📋</span>
+                                </div>
+                                <p className="text-[11px] text-gray-600">No sessions yet</p>
+                            </div>
                         ) : (
                             <div className="space-y-2">
                                 {history.map((h) => (
@@ -487,7 +552,7 @@ const WorkspacePage = () => {
                                     >
                                         <div className="flex justify-between mb-1">
                                             <span className="text-gray-400 font-semibold">{h.total_tokens} tokens</span>
-                                            <span className="text-gray-600">${h.total_cost_usd ? h.total_cost_usd.toFixed(10) : '0.0000'}</span>
+                                            <span className="text-gray-600">${h.total_cost_usd ? h.total_cost_usd.toFixed(4) : '0.0000'}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-600">
                                             {new Date(h.created_at).toLocaleDateString()}
