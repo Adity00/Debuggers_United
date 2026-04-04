@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PeraWalletConnect } from "@perawallet/connect";
+import { ACTIVE_NETWORK } from "../config/networkConfig";
 
-const peraWallet = new PeraWalletConnect();
+const peraWallet = new PeraWalletConnect({
+    chainId: ACTIVE_NETWORK.chainId
+});
+
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -105,7 +109,15 @@ const Navbar = () => {
                     ))}
                 </div>
 
-                <div className="hidden md:flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-4">
+                    {/* Network Badge */}
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+                        <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                        <span className="text-[10px] font-bold text-orange-400 tracking-wider uppercase">{ACTIVE_NETWORK.label}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+
                     {accountAddress ? (
                         <>
                             <Link to="/services" className="btn-primary text-sm !px-5 !py-2.5">
@@ -121,6 +133,7 @@ const Navbar = () => {
                         </button>
                     )}
                 </div>
+            </div>
 
                 {/* Mobile toggle */}
                 <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white p-2">
@@ -156,7 +169,17 @@ const Navbar = () => {
                             </a>
                         )
                     ))}
+                    {/* Network Badge Mobile */}
+                    <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-orange-500/5 border border-orange-500/10 mt-4">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">Network</span>
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                            <span className="text-[10px] font-bold text-orange-400 uppercase">{ACTIVE_NETWORK.label}</span>
+                        </div>
+                    </div>
+
                     {accountAddress ? (
+
                         <>
                             <Link to="/services" className="btn-primary block text-center text-sm !py-2.5 mt-4" onClick={() => setIsOpen(false)}>
                                 Dashboard

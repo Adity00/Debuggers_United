@@ -1,42 +1,60 @@
-# PayPerAI
+# 🚀 PayPerAI — Blockchain-Gated AI Image Studio
 
-Pay-per-use AI API platform using Algorand blockchain for payment verification.
+**PayPerAI** is a cutting-edge platform that solves the issue of pay-per-use AI access using the Algorand blockchain. It features an **AI Image Studio** with real-time prepaid deposits, one-click NFT minting, and persistent on-chain ownership.
 
-## Prerequisites
+---
 
-- Python 3.11+
-- Node.js 18+
-- AlgoKit CLI: `pip install algokit`
-- Pera Wallet (mobile app) switched to Testnet
-- Testnet ALGO from https://bank.testnet.algorand.network/
+## ✨ Standout Features
 
-## Step 1 — Fill in environment variables
+### 🎨 1. AI Image Studio (DALL-E 3)
+Generate stunning, high-resolution AI art directly within the platform. Our integration with OpenAI's DALL-E 3 ensures premium quality for every prompt.
 
-- Copy backend/.env.example to backend/.env
-- Fill: OPENAI_API_KEY, PLATFORM_WALLET_ADDRESS,
-  PLATFORM_WALLET_MNEMONIC, ALGORAND_APP_ID (after deploy)
+### 💎 2. One-Click NFT Minting
+Turn your AI creations into permanent digital assets. With a single click, the platform handles:
+*   **Persistent Hosting**: Images are saved to stable storage for Pera Wallet visibility.
+*   **ARC-69 Metadata**: Standard-compliant NFT metadata for maximum compatibility.
+*   **Automated Transfer**: The NFT is minted and sent directly to your connected Algorand wallet.
 
-## Step 2 — Deploy Smart Contract
+### 💳 3. Prepaid Blockchain Gating
+No monthly subscriptions or complex credit cards.
+*   **Connect & Pay**: Simply connect your Pera Wallet and deposit ALGO.
+*   **Micro-Payments**: Funds are deducted in real-time as you use AI services.
+*   **Full Transparency**: Every transaction and token usage is tracked and visible.
 
-cd contract
-python -m venv .venv
-.venv\Scripts\activate (Windows) or source .venv/bin/activate (Mac/Linux)
-pip install -r requirements.txt
-algokit compile smart_contracts/pay_per_ai/contract.py
-python deploy_config.py
-→ Copy the printed APP_ID into backend/.env as ALGORAND_APP_ID
+---
 
-## Step 3 — Start Backend
+## 🛠️ Technical Architecture
 
-cd backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+### **Frontend**
+*   **React + Vite**: For a lightning-fast, modern user interface.
+*   **Tailwind CSS**: Sleek, responsive, and premium "Dark Mode" aesthetics.
+*   **Pera Wallet Connect**: Seamless, secure mobile-first authentication.
 
-## Step 4 — Start Frontend
+### **Backend**
+*   **FastAPI (Python)**: High-performance, asynchronous API layer.
+*   **Algorand Python SDK**: Direct interaction with the Algorand TestNet.
+*   **SQLite + aiosqlite**: Efficient, off-chain ledger for real-time balance tracking.
 
-cd frontend
-npm install
-npm run dev
-→ Opens at http://localhost:5173
+---
+
+## 🚀 Quick Setup & Deployment
+
+### 1. Backend Setup (Render)
+1.  Connect your GitHub repository to **Render**.
+2.  Root Directory: `backend`
+3.  Build Command: `pip install -r requirements.txt`
+4.  Start Command: `gunicorn -k uvicorn.workers.UvicornWorker app.main:app`
+5.  Add Env Vars: `OPENAI_API_KEY`, `PLATFORM_WALLET_MNEMONIC`.
+
+### 2. Frontend Setup (Vercel)
+1.  Connect your repository to **Vercel**.
+2.  Root Directory: `frontend`
+3.  Build Command: `npm run build`
+4.  Add Env Var: `VITE_API_BASE_URL` (Points to your Render URL).
+
+---
+
+## 🌐 Network Status: **Algorand TestNet**
+The project is currently configured for the **Algorand TestNet** for safe, zero-cost developer testing and hackathon demonstrations.
+
+**Winner Portfolio - Built for the future of AI & Web3.**

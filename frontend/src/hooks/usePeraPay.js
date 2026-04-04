@@ -1,6 +1,8 @@
 import { useCallback, useRef } from 'react';
+import { ACTIVE_NETWORK } from "../config/networkConfig";
 
-const ALGOD_SERVER = 'https://testnet-api.algonode.cloud';
+const ALGOD_SERVER = ACTIVE_NETWORK.algodServer;
+
 
 export function usePeraPay() {
     const algodClientRef = useRef(null);
@@ -22,7 +24,10 @@ export function usePeraPay() {
         const algosdk = (await import('algosdk')).default;
         const algodClient = await getAlgodClient();
 
-        const peraWallet = new PeraWalletConnect();
+        const peraWallet = new PeraWalletConnect({
+            chainId: ACTIVE_NETWORK.chainId
+        });
+
 
         // Ensure connected
         let accounts = [];

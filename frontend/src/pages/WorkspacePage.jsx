@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { sendChat, getPaymentInfo, getConversationHistory, getServices, getWalletPrepayBalance, depositWalletFunds, getConversationMessages, generateImage, mintNFT, transferNFT } from '../api/client';
+import { ACTIVE_NETWORK } from "../config/networkConfig";
 
 const ICONS = {
     code_review: '🔍', image_studio: '🎨', business_evaluator: '💡',
     cold_email: '📧', humanize_text: '🤖', linkedin_post: '📝',
 };
 
-const ALGOD_API = 'https://testnet-api.algonode.cloud';
+const ALGOD_API = ACTIVE_NETWORK.algodServer;
+
 
 const WorkspacePage = () => {
     const { serviceId } = useParams();
@@ -34,7 +36,7 @@ const WorkspacePage = () => {
 
     const [isDepositing, setIsDepositing] = useState(false);
     const [depositInput, setDepositInput] = useState('1');
-    
+
     // NFT States
     const [isMinting, setIsMinting] = useState(false);
     const [mintedAssetId, setMintedAssetId] = useState(null);
@@ -77,9 +79,9 @@ const WorkspacePage = () => {
     // Load payment info, balance, and history once service is available
     useEffect(() => {
         if (!service || !wallet) return;
-        getPaymentInfo(service.id).then(setPaymentInfo).catch(() => {});
-        fetchBalance(wallet).then(setBalance).catch(() => {});
-        getConversationHistory(wallet, service.id).then(setHistory).catch(() => {});
+        getPaymentInfo(service.id).then(setPaymentInfo).catch(() => { });
+        fetchBalance(wallet).then(setBalance).catch(() => { });
+        getConversationHistory(wallet, service.id).then(setHistory).catch(() => { });
     }, [service, wallet, fetchBalance]);
 
     const loadConversation = async (convId) => {
@@ -91,15 +93,15 @@ const WorkspacePage = () => {
             setTotalTokens(data.total_tokens);
             setTotalCost(data.total_cost_usd);
             setIsPaid(true);
-            
+
             // Sync URL query state safely
             const u = new URL(window.location);
             u.searchParams.set('session', convId);
             window.history.pushState({}, '', u);
-            
+
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        } catch(e) {
-            setError("Failed to load session: "+e.message);
+        } catch (e) {
+            setError("Failed to load session: " + e.message);
         } finally {
             setIsLoading(false);
         }
@@ -121,7 +123,7 @@ const WorkspacePage = () => {
         try {
             setIsDepositing(true);
             setError(null);
-            
+
             const { PeraWalletConnect } = await import('@perawallet/connect');
             const algosdk = (await import('algosdk')).default;
 
@@ -132,27 +134,30 @@ const WorkspacePage = () => {
                 toAddr = freshInfo?.contract_address;
             }
 
-            const pw = new PeraWalletConnect();
+            const pw = new PeraWalletConnect({
+                chainId: ACTIVE_NETWORK.chainId
+            });
+
             let accounts = [];
-            try { accounts = await pw.reconnectSession(); } catch (_) {}
+            try { accounts = await pw.reconnectSession(); } catch (_) { }
             if (!accounts || !accounts.length) accounts = await pw.connect();
             if (accounts[0] !== wallet) throw new Error("Wallet mismatch. Please reconnect the correct wallet.");
 
             const algodClient = new algosdk.Algodv2('', ALGOD_API, '');
             const params = await algodClient.getTransactionParams().do();
-            
+
             const parsedAlgo = parseFloat(depositInput);
             if (isNaN(parsedAlgo) || parsedAlgo <= 0) throw new Error("Invalid deposit amount");
-            
+
             const amountMicro = Math.floor(parsedAlgo * 1_000_000);
             const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
                 sender: wallet, receiver: toAddr, amount: amountMicro, suggestedParams: params,
             });
             const txId = txn.txID().toString();
-            
+
             const signed = await pw.signTransaction([[{ txn, signers: [wallet] }]]);
             await algodClient.sendRawTransaction(signed).do();
-            
+
             setPayingStatus("Verifying your deposit on the Algorand Testnet...");
             await algosdk.waitForConfirmation(algodClient, txId, 4);
 
@@ -178,22 +183,25 @@ const WorkspacePage = () => {
             setError(null);
             const { PeraWalletConnect } = await import('@perawallet/connect');
             const algosdk = (await import('algosdk')).default;
-            
-            const pw = new PeraWalletConnect();
-            try { await pw.reconnectSession(); } catch (_) {}
-            
+
+            const pw = new PeraWalletConnect({
+                chainId: ACTIVE_NETWORK.chainId
+            });
+
+            try { await pw.reconnectSession(); } catch (_) { }
+
             const algodClient = new algosdk.Algodv2('', ALGOD_API, '');
             const params = await algodClient.getTransactionParams().do();
-            
+
             // 0-amount Transfer to self for Asset ID = Opt-In
             const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
                 sender: wallet, receiver: wallet, amount: 0, assetIndex: parseInt(assetId), suggestedParams: params,
             });
-            
+
             const signed = await pw.signTransaction([[{ txn, signers: [wallet] }]]);
             await algodClient.sendRawTransaction(signed).do();
             await algosdk.waitForConfirmation(algodClient, txn.txID().toString(), 4);
-            
+
             return true;
         } catch (e) {
             setError("Opt-in failed: " + e.message);
@@ -207,19 +215,19 @@ const WorkspacePage = () => {
         try {
             setIsMinting(true);
             setError(null);
-            
+
             // 1. Mint on backend (created by platform wallet)
             const result = await mintNFT(wallet, imageUrl, promptText);
             const assetId = result.asset_id;
-            
+
             // 2. Guide user to Opt-In
             setPayingStatus(`NFT created! Asset ID: ${assetId}. Please Opt-In in your wallet to receive it...`);
             const optedIn = await handleOptIn(assetId);
-            
+
             if (optedIn) {
                 setPayingStatus(`Transferring Asset ${assetId} to your wallet...`);
                 await transferNFT(wallet, assetId);
-                
+
                 setMintedAssetId(assetId);
                 setPayingStatus("NFT successfully sent to your wallet! ✨");
                 setTimeout(() => setPayingStatus(""), 5000);
@@ -241,18 +249,18 @@ const WorkspacePage = () => {
 
         setIsLoading(true);
         setPayingStatus(service.id === 'image_studio' ? 'Generating unique AI art (DALLE-3)...' : 'Generating AI response...');
-        
+
         setMessages(prev => [...prev, { role: 'user', content: userPrompt, tokens_used: 0, cost_usd: 0 }]);
 
         try {
             if (service.id === 'image_studio') {
                 const result = await generateImage(wallet, userPrompt, conversationId);
                 setConversationId(result.conversation_id);
-                
+
                 // Re-fetch messages to get the updated history including the image URL
                 const updated = await getConversationMessages(wallet, result.conversation_id);
                 setMessages(updated.messages);
-                
+
                 // Set balance (fixed 2.0 ALGO deduction)
                 setBalance(prev => Math.max(0, prev - 2000000));
             } else {
@@ -261,14 +269,14 @@ const WorkspacePage = () => {
                 setMessages(result.messages);
                 setTotalTokens(result.total_tokens_session);
                 setTotalCost(result.total_cost_session);
-                
+
                 const algoPriceUsd = 0.20;
                 const sessionCostAlgo = result.total_cost_session / algoPriceUsd;
                 const sessionCostMicroAlgo = Math.round(sessionCostAlgo * 1_000_000);
-                
+
                 fetchBalance(wallet).then(realBalance => {
                     setBalance(Math.max(0, realBalance - sessionCostMicroAlgo));
-                }).catch(() => {});
+                }).catch(() => { });
             }
 
         } catch (err) {
@@ -326,12 +334,12 @@ const WorkspacePage = () => {
                             <div className="flex items-center justify-between">
                                 <div className="text-xl font-serif font-bold text-white">{balanceAlgo}</div>
                                 <div className="flex gap-1">
-                                    <input 
-                                        type="number" 
-                                        step="0.1" 
+                                    <input
+                                        type="number"
+                                        step="0.1"
                                         min="0.1"
-                                        value={depositInput} 
-                                        onChange={(e) => setDepositInput(e.target.value)} 
+                                        value={depositInput}
+                                        onChange={(e) => setDepositInput(e.target.value)}
                                         className="w-12 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[10px] text-white"
                                     />
                                     <button onClick={handleDeposit} disabled={isDepositing} className="text-[10px] bg-brand-purple/20 text-brand-light px-2 rounded">
@@ -372,27 +380,26 @@ const WorkspacePage = () => {
                             {messages.map((msg, i) => {
                                 const isImage = msg.content.startsWith('[IMAGE]');
                                 const imageUrl = isImage ? msg.content.replace('[IMAGE]', '') : '';
-                                
+
                                 return (
                                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] rounded-2xl p-4 ${
-                                            msg.role === 'user'
-                                                ? 'bg-brand-purple/20 border border-brand-purple/30 text-gray-200'
-                                                : 'bg-white/5 border border-white/5 text-gray-300'
-                                        }`}>
+                                        <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user'
+                                            ? 'bg-brand-purple/20 border border-brand-purple/30 text-gray-200'
+                                            : 'bg-white/5 border border-white/5 text-gray-300'
+                                            }`}>
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="text-xs font-bold text-gray-500 uppercase">{msg.role === 'user' ? 'You' : 'AI'}</span>
                                                 {msg.tokens_used > 0 && !isImage && (
                                                     <span className="text-[10px] text-gray-600">{msg.tokens_used} tokens · ${msg.cost_usd ? msg.cost_usd.toFixed(10) : '0.0000'}</span>
                                                 )}
                                                 {isImage && (
-                                                     <div className="flex flex-col">
+                                                    <div className="flex flex-col">
                                                         <span className="text-[10px] text-brand-light font-bold">PREMIUM AI ART</span>
                                                         <span className="text-[8px] text-orange-400/80 uppercase font-bold tracking-tighter">⚠️ Expires in 1 hour (Download to save)</span>
-                                                     </div>
+                                                    </div>
                                                 )}
                                             </div>
-                                            
+
                                             {isImage ? (
                                                 <div className="space-y-4">
                                                     <div className="relative group rounded-xl overflow-hidden border border-white/10 shadow-2xl max-w-sm">
@@ -404,15 +411,15 @@ const WorkspacePage = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        <button 
-                                                            onClick={() => handleMintNFT(imageUrl, messages[i-1]?.content || 'AI Art')}
+                                                        <button
+                                                            onClick={() => handleMintNFT(imageUrl, messages[i - 1]?.content || 'AI Art')}
                                                             disabled={isMinting || mintedAssetId}
                                                             className="flex-grow btn-primary !py-2 !text-xs !rounded-lg disabled:opacity-50"
                                                         >
                                                             {isMinting ? 'Minting...' : mintedAssetId ? `Minted (ID: ${mintedAssetId})` : '✨ Mint as NFT'}
                                                         </button>
-                                                        <a 
-                                                            href={imageUrl} 
+                                                        <a
+                                                            href={imageUrl}
                                                             download="ai-art.png"
                                                             className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors text-xs flex items-center justify-center px-4"
                                                         >
@@ -480,12 +487,11 @@ const WorkspacePage = () => {
                         ) : (
                             <div className="space-y-2">
                                 {history.map((h) => (
-                                    <div 
-                                        key={h.conversation_id} 
+                                    <div
+                                        key={h.conversation_id}
                                         onClick={() => navigate(`?session=${h.conversation_id}`, { replace: true })}
-                                        className={`p-3 rounded-xl border cursor-pointer transition-all text-xs hover:border-brand-purple/30 ${
-                                            h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10' : 'border-white/5 hover:bg-white/5'
-                                        }`}
+                                        className={`p-3 rounded-xl border cursor-pointer transition-all text-xs hover:border-brand-purple/30 ${h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10' : 'border-white/5 hover:bg-white/5'
+                                            }`}
                                     >
                                         <div className="flex justify-between mb-1">
                                             <span className="text-gray-400 font-semibold">{h.total_tokens} tokens</span>
