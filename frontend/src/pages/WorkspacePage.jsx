@@ -295,76 +295,142 @@ const WorkspacePage = () => {
     const balanceAlgo = (balance / 1_000_000).toFixed(4);
 
     return (
-        <div className="min-h-screen pt-12 pb-6 px-4 flex flex-col">
+        <div className="min-h-screen pt-14 pb-6 px-4 sm:px-6 flex flex-col">
             <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
-                <button onClick={() => navigate('/services')} className="text-gray-500 hover:text-white text-sm transition-colors mb-4 flex items-center gap-2 self-start">
-                    ← Back to Services
+
+                {/* Back Navigation */}
+                <button
+                    onClick={() => navigate('/services')}
+                    className="group text-gray-500 hover:text-white text-sm transition-all duration-300 mb-6 flex items-center gap-2 self-start"
+                >
+                    <span className="group-hover:-translate-x-1 transition-transform duration-300">←</span>
+                    Back to Services
                 </button>
 
-                {/* Header: Service card (left) + Stats (right) */}
-                <div className="flex flex-col lg:flex-row gap-4 mb-4">
-                    <div className="glass-card rounded-2xl p-4 flex items-center gap-4 lg:w-80 flex-shrink-0">
-                        <div className="text-3xl">{ICONS[service.id] || '✨'}</div>
-                        <div>
-                            <h2 className="text-lg font-bold text-white">{service.name}</h2>
-                            <p className="text-[10px] text-gray-400 leading-tight">{service.description}</p>
-                            <div className="text-brand-light font-bold text-sm mt-1">{service.price_algo} ALGO / session</div>
+                {/* ─── Header: Service Identity + Stats ─── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
+
+                    {/* Service Identity Card */}
+                    <div className="lg:col-span-4 glass-card rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden">
+                        <div className="absolute -top-10 -left-10 w-32 h-32 bg-brand-purple/5 rounded-full blur-2xl"></div>
+                        <div className="text-4xl relative z-10 w-14 h-14 flex items-center justify-center rounded-xl bg-brand-purple/10 border border-brand-purple/20 flex-shrink-0">
+                            {ICONS[service.id] || '✨'}
+                        </div>
+                        <div className="relative z-10 min-w-0">
+                            <h2 className="text-lg font-bold text-white truncate">{service.name}</h2>
+                            <p className="text-[11px] text-gray-400 leading-snug mt-0.5 line-clamp-2">{service.description}</p>
+                            <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-brand-purple/10 border border-brand-purple/20">
+                                <span className="text-brand-light font-bold text-xs">{service.price_algo} ALGO</span>
+                                <span className="text-gray-500 text-[10px]">/ session</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-2 flex-grow flex-wrap">
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Tokens Used</div>
-                            <div className="text-xl font-serif font-bold text-white">{totalTokens.toLocaleString()}</div>
+                    {/* Stats Row */}
+                    <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {/* Tokens Used */}
+                        <div className="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group hover:border-purple-500/20 transition-colors duration-300">
+                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-purple-500/5 rounded-full blur-xl group-hover:bg-purple-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <span className="text-[10px]">📊</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Tokens</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white tracking-tight">{totalTokens.toLocaleString()}</div>
                         </div>
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Cost Incurred</div>
-                            <div className="text-xl font-serif font-bold text-brand-light">${totalCost ? totalCost.toFixed(8) : '0.0000'}</div>
-                        </div>
-                        <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px] flex flex-col justify-between">
-                            <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Balance</div>
-                            <div className="flex items-center justify-between">
-                                <div className="text-xl font-serif font-bold text-white">{balanceAlgo}</div>
-                                <div className="flex gap-1">
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0.1"
-                                        value={depositInput}
-                                        onChange={(e) => setDepositInput(e.target.value)}
-                                        className="w-12 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[10px] text-white"
-                                    />
-                                    <button onClick={handleDeposit} disabled={isDepositing} className="text-[10px] bg-brand-purple/20 text-brand-light px-2 rounded">
-                                        +
-                                    </button>
-                                </div>
+
+                        {/* Cost Incurred */}
+                        <div className="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-500/20 transition-colors duration-300">
+                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-cyan-500/5 rounded-full blur-xl group-hover:bg-cyan-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <span className="text-[10px]">💰</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Cost</span>
+                            </div>
+                            <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 tracking-tight">
+                                ${totalCost ? totalCost.toFixed(4) : '0.0000'}
                             </div>
                         </div>
-                        {isPaid && (
-                            <div className="glass-card rounded-xl p-3 flex-1 min-w-[130px]">
-                                <div className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mb-1">Session</div>
+
+                        {/* Balance with Deposit */}
+                        <div className="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group hover:border-green-500/20 transition-colors duration-300">
+                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-green-500/5 rounded-full blur-xl group-hover:bg-green-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <span className="text-[10px]">💎</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Balance</span>
+                            </div>
+                            <div className="text-2xl font-bold text-white tracking-tight mb-2">{balanceAlgo}</div>
+                            <div className="flex gap-1.5 items-center">
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    value={depositInput}
+                                    onChange={(e) => setDepositInput(e.target.value)}
+                                    className="w-16 bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-brand-purple/50 transition-colors"
+                                />
+                                <button
+                                    onClick={handleDeposit}
+                                    disabled={isDepositing}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg text-[11px] text-green-400 font-bold hover:border-green-400/50 hover:from-green-500/30 hover:to-emerald-500/30 transition-all disabled:opacity-40"
+                                >
+                                    {isDepositing ? '...' : '+ Add'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Session Status */}
+                        <div className="glass-card rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden group hover:border-amber-500/20 transition-colors duration-300">
+                            <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition-colors"></div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <span className="text-[10px]">⚡</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Session</span>
+                            </div>
+                            {isPaid ? (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                                    <span className="text-xs font-bold text-green-400">Active</span>
+                                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-lg shadow-green-400/30"></div>
+                                    <span className="text-sm font-bold text-green-400">Active</span>
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-gray-600"></div>
+                                    <span className="text-sm font-semibold text-gray-500">Ready</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Main Content */}
+                {/* ─── Status Banner ─── */}
+                {payingStatus && (
+                    <div className="mb-4 flex items-center gap-3 bg-brand-purple/5 border border-brand-purple/15 rounded-xl px-5 py-3 animate-pulse">
+                        <div className="w-4 h-4 border-2 border-brand-purple border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                        <span className="text-sm text-brand-light font-medium">{payingStatus}</span>
+                    </div>
+                )}
+
+                {/* ─── Main Content: Chat + History ─── */}
                 <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-0">
+
+                    {/* Chat Panel */}
                     <div className="flex-grow flex flex-col min-h-0 glass-card rounded-2xl overflow-hidden">
-                        <div className="flex-grow overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+
+                        {/* Messages Area */}
+                        <div className="flex-grow overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 400px)' }}>
                             {messages.length === 0 && !isLoading && (
                                 <div className="flex items-center justify-center h-full">
-                                    <div className="text-center py-16">
-                                        <div className="text-5xl mb-4">{ICONS[service.id] || '✨'}</div>
-                                        <h3 className="text-xl font-bold text-white mb-2">Start a conversation</h3>
-                                        <p className="text-sm text-gray-500 max-w-md">
+                                    <div className="text-center py-16 max-w-sm">
+                                        <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-brand-purple/20 to-cyan-500/10 border border-brand-purple/20 flex items-center justify-center">
+                                            <span className="text-4xl">{ICONS[service.id] || '✨'}</span>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white mb-3">Start a conversation</h3>
+                                        <p className="text-sm text-gray-500 leading-relaxed">
                                             Costs are automatically deducted from your prepay balance.
                                             Make sure you deposit ALGO first!
                                         </p>
+                                        <div className="mt-5 flex items-center justify-center gap-3">
+                                            <div className="h-px w-8 bg-gradient-to-r from-transparent to-gray-700"></div>
+                                            <span className="text-[10px] text-gray-600 uppercase tracking-widest font-bold">Powered by AI</span>
+                                            <div className="h-px w-8 bg-gradient-to-l from-transparent to-gray-700"></div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -445,52 +511,67 @@ const WorkspacePage = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
+                        {/* Error Banner */}
                         {error && (
-                            <div className="mx-6 mb-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm">
-                                ⚠️ {error}
+                            <div className="mx-6 mb-3 bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm flex items-center gap-2">
+                                <span>⚠️</span>
+                                <span className="flex-grow">{error}</span>
+                                <button onClick={() => setError(null)} className="text-red-500/60 hover:text-red-400 text-xs flex-shrink-0">✕</button>
                             </div>
                         )}
 
-                        <form onSubmit={handleSendPrompt} className="border-t border-white/5 p-4 flex gap-3">
-                            <input
-                                type="text"
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder={messages.length === 0 ? "Enter your prompt to start..." : "Type a follow-up..."}
-                                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-purple/50 transition-colors"
-                                disabled={isLoading}
-                                maxLength={2000}
-                            />
-                            <button
-                                type="submit"
-                                disabled={isLoading || !prompt.trim()}
-                                className="btn-primary !rounded-xl !px-6 !py-3 text-sm disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-                            >
-                                {isLoading ? '...' : messages.length === 0 ? 'Pay & Send' : 'Send ▶'}
-                            </button>
+                        {/* Input Bar */}
+                        <form onSubmit={handleSendPrompt} className="border-t border-white/5 p-4">
+                            <div className="flex gap-3 items-center">
+                                <input
+                                    type="text"
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    placeholder={messages.length === 0 ? "Enter your prompt to start..." : "Type a follow-up..."}
+                                    className="flex-grow bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/20 transition-all"
+                                    disabled={isLoading}
+                                    maxLength={2000}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={isLoading || !prompt.trim()}
+                                    className="btn-primary !rounded-xl !px-7 !py-3.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 whitespace-nowrap"
+                                >
+                                    {isLoading ? '...' : messages.length === 0 ? 'Pay & Send' : 'Send ▶'}
+                                </button>
+                            </div>
                         </form>
                     </div>
 
-
-                    <div className="lg:w-64 flex-shrink-0 glass-card rounded-2xl p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Session History</h3>
+                    {/* ─── Session History Sidebar ─── */}
+                    <div className="lg:w-72 flex-shrink-0 glass-card rounded-2xl p-5 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-sm">🕘</span>
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Session History</h3>
+                        </div>
                         {history.length === 0 ? (
-                            <p className="text-xs text-gray-600">No previous sessions yet.</p>
+                            <div className="text-center py-8">
+                                <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center">
+                                    <span className="text-lg opacity-40">📋</span>
+                                </div>
+                                <p className="text-xs text-gray-600">No previous sessions yet.</p>
+                                <p className="text-[10px] text-gray-700 mt-1">Start chatting to create one.</p>
+                            </div>
                         ) : (
                             <div className="space-y-2">
                                 {history.map((h) => (
                                     <div
                                         key={h.conversation_id}
                                         onClick={() => navigate(`?session=${h.conversation_id}`, { replace: true })}
-                                        className={`p-3 rounded-xl border cursor-pointer transition-all text-xs hover:border-brand-purple/30 ${h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10' : 'border-white/5 hover:bg-white/5'
+                                        className={`p-3.5 rounded-xl border cursor-pointer transition-all duration-200 text-xs hover:border-brand-purple/30 hover:translate-x-0.5 ${h.conversation_id === conversationId ? 'border-brand-purple/50 bg-brand-purple/10 shadow-lg shadow-brand-purple/5' : 'border-white/5 hover:bg-white/5'
                                             }`}
                                     >
-                                        <div className="flex justify-between mb-1">
-                                            <span className="text-gray-400 font-semibold">{h.total_tokens} tokens</span>
-                                            <span className="text-gray-600">${h.total_cost_usd ? h.total_cost_usd.toFixed(10) : '0.0000'}</span>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <span className="text-gray-300 font-semibold">{h.total_tokens} tokens</span>
+                                            <span className="text-gray-600 text-[10px]">${h.total_cost_usd ? h.total_cost_usd.toFixed(4) : '0.0000'}</span>
                                         </div>
                                         <div className="text-[10px] text-gray-600">
-                                            {new Date(h.created_at).toLocaleDateString()}
+                                            {new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                     </div>
                                 ))}
@@ -501,6 +582,7 @@ const WorkspacePage = () => {
             </div>
         </div>
     );
+
 };
 
 export default WorkspacePage;
