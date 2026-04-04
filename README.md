@@ -8,7 +8,14 @@
     <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
     <img src="https://img.shields.io/badge/AI-OpenAI%20DALL--E%203-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
   </p>
+
+  <h3>
+    <a href="https://debuggers-united-sandy.vercel.app/">🌐 Live Web App (Frontend)</a>
+    <span> | </span>
+    <a href="https://debuggers-united.onrender.com/docs">⚙️ Live API Docs (Backend)</a>
+  </h3>
 </div>
+
 
 <br />
 
