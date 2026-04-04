@@ -110,6 +110,15 @@ async def chat(data: ChatIn):
     cost_algo = cost_usd / 0.20 # Assuming 1 ALGO = $0.20
     cost_microalgo = max(0, int(cost_algo * 1_000_000))
     await deduct_wallet_balance(data.wallet_address, cost_microalgo)
+    
+    # Log deduction to transaction ledger for audit trail
+    from app.database import log_transaction
+    await log_transaction(
+        wallet_address=data.wallet_address,
+        tx_type="deduction",
+        amount_microalgo=cost_microalgo,
+        description=f"AI usage: {data.service_id} | {tokens_used} tokens | ${cost_usd:.8f}"
+    )
 
     # Save AI response
     await add_message(conversation_id, "assistant", ai_text, tokens_used, cost_usd)

@@ -60,6 +60,27 @@ async def init_db():
                 balance_microalgo INTEGER DEFAULT 0
             )
         ''')
+        # Double-spend protection: track used deposit transaction IDs
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS used_deposits (
+                tx_id TEXT PRIMARY KEY,
+                wallet_address TEXT NOT NULL,
+                amount_microalgo INTEGER NOT NULL,
+                credited_at TEXT NOT NULL
+            )
+        ''')
+        # Transaction ledger: full audit trail of every credit/debit
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS transaction_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                wallet_address TEXT NOT NULL,
+                tx_type TEXT NOT NULL,
+                amount_microalgo INTEGER NOT NULL,
+                on_chain_tx_id TEXT,
+                description TEXT,
+                created_at TEXT NOT NULL
+            )
+        ''')
         await db.commit()
 
 # ── Legacy session functions (kept for backward compatibility) ──
@@ -198,4 +219,48 @@ async def deduct_wallet_balance(wallet_address, amount_microalgo):
             WHERE wallet_address = ?
         ''', (amount_microalgo, wallet_address))
         await db.commit()
+
+# ── Double-Spend Protection ──
+
+async def check_deposit_tx_used(tx_id):
+    """Check if a deposit transaction ID has already been credited."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT 1 FROM used_deposits WHERE tx_id = ?", (tx_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row is not None
+
+async def mark_deposit_tx_used(tx_id, wallet_address, amount_microalgo):
+    """Record a deposit transaction ID as used to prevent double-spending."""
+    from datetime import datetime, timezone
+    credited_at = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            INSERT INTO used_deposits (tx_id, wallet_address, amount_microalgo, credited_at)
+            VALUES (?, ?, ?, ?)
+        ''', (tx_id, wallet_address, amount_microalgo, credited_at))
+        await db.commit()
+
+# ── Transaction Ledger (Audit Trail) ──
+
+async def log_transaction(wallet_address, tx_type, amount_microalgo, on_chain_tx_id=None, description=None):
+    """Record every credit/debit in an immutable ledger for full audit trail."""
+    from datetime import datetime, timezone
+    created_at = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('''
+            INSERT INTO transaction_ledger (wallet_address, tx_type, amount_microalgo, on_chain_tx_id, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (wallet_address, tx_type, amount_microalgo, on_chain_tx_id, description, created_at))
+        await db.commit()
+
+async def get_transaction_ledger(wallet_address, limit=50):
+    """Fetch the transaction ledger for a wallet (most recent first)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM transaction_ledger WHERE wallet_address = ? ORDER BY id DESC LIMIT ?",
+            (wallet_address, limit)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
 
