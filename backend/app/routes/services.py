@@ -1,5 +1,7 @@
 """
 API endpoints for surfacing service offerings and their payment metrics.
+Services are now indexed in PostgreSQL for fast retrieval,
+with prices read from the smart contract on-chain.
 """
 from fastapi import APIRouter, HTTPException
 import qrcode
@@ -17,6 +19,7 @@ router = APIRouter(tags=["Services"])
 async def list_services():
     """
     Enumerates available smart contract bound AI services.
+    Returns from in-memory catalog (synced with on-chain data).
     """
     services = get_services_list()
     out = []

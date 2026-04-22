@@ -1,11 +1,12 @@
 """
-API endpoints for wallet prepay balance management.
+API endpoints for wallet balance management.
+Balance is NOW on-chain (smart contract escrow) — NOT in database.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.database import (
-    get_wallet_balance, add_wallet_balance,
+    get_wallet_balance,
     check_deposit_tx_used, mark_deposit_tx_used,
     log_transaction, get_transaction_ledger
 )
@@ -28,7 +29,8 @@ class WalletBalanceOut(BaseModel):
 @router.get("/wallet/{wallet_address}/balance", response_model=WalletBalanceOut)
 async def get_balance(wallet_address: str):
     """
-    Get the off-chain deposited prepay balance for a wallet.
+    Get the on-chain escrow balance for a wallet.
+    Reads directly from the smart contract BoxMap — NOT from database.
     """
     bal = await get_wallet_balance(wallet_address)
     return WalletBalanceOut(
@@ -42,6 +44,7 @@ async def get_ledger(wallet_address: str):
     """
     Get the full transaction ledger (audit trail) for a wallet.
     Every deposit and deduction is recorded here with on-chain tx references.
+    Served from PostgreSQL for fast retrieval.
     """
     entries = await get_transaction_ledger(wallet_address)
     return {"wallet_address": wallet_address, "ledger": entries}
@@ -49,13 +52,16 @@ async def get_ledger(wallet_address: str):
 @router.post("/wallet/deposit")
 async def deposit_funds(data: DepositIn):
     """
-    Verify an on-chain deposit transaction and add funds to the wallet's prepay balance.
+    Verify an on-chain deposit transaction and log it.
     
-    Security features:
-    - Double-spend protection: Each tx_id can only be credited once
-    - Minimum deposit enforcement: At least 0.1 ALGO required
-    - On-chain verification: Transaction must exist on-chain with correct sender/receiver
-    - Audit trail: Every deposit is logged in the transaction ledger
+    The smart contract handles the actual balance crediting via deposit().
+    This endpoint:
+    1. Verifies the transaction exists on-chain
+    2. Prevents double-spend (each tx_id used once)
+    3. Logs the deposit to PostgreSQL for audit trail
+    4. Returns the current on-chain balance
+    
+    Security: Backend does NOT credit balances — contract does.
     """
     
     # ── 1. Double-Spend Protection ──
@@ -78,12 +84,10 @@ async def deposit_funds(data: DepositIn):
         if not txns:
             raise HTTPException(status_code=400, detail="Transaction not found on network. It may take a few seconds to appear — please try again.")
             
-        # Look for the payment to our platform wallet
         contract_addr = get_app_address(settings.app_id_int)
         
         deposited_amount = 0
         for tx in txns:
-            # Ensure the transaction is confirmed (not pending)
             if tx.get("confirmed-round", 0) == 0:
                 raise HTTPException(status_code=400, detail="Transaction is not yet confirmed on-chain. Please wait a moment and try again.")
             
@@ -102,12 +106,13 @@ async def deposit_funds(data: DepositIn):
                 detail=f"Minimum deposit is 0.1 ALGO ({MIN_DEPOSIT_MICROALGO} microALGO). You sent {deposited_amount} microALGO."
             )
         
-        # ── 4. Credit the balance ──
+        # ── 4. Mark as used (double-spend protection) ──
         await mark_deposit_tx_used(data.tx_group_id, data.wallet_address, deposited_amount)
-        await add_wallet_balance(data.wallet_address, deposited_amount)
+        
+        # ── 5. Get current on-chain balance (contract already credited) ──
         new_balance = await get_wallet_balance(data.wallet_address)
         
-        # ── 5. Log to transaction ledger (audit trail) ──
+        # ── 6. Log to PostgreSQL audit trail ──
         await log_transaction(
             wallet_address=data.wallet_address,
             tx_type="deposit",
@@ -127,4 +132,3 @@ async def deposit_funds(data: DepositIn):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

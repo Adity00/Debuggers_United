@@ -1,14 +1,18 @@
 """
 Multi-turn chat endpoint with context preservation.
+Balance checks and deductions are now on-chain via smart contract.
+Backend is a stateless executor — it only runs AI after on-chain authorization.
 """
 import uuid
+import hashlib
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 
 from app.database import (
     create_conversation, get_conversation, mark_conversation_paid,
-    add_message, get_conversation_messages, get_wallet_conversations
+    add_message, get_conversation_messages, get_wallet_conversations,
+    get_wallet_balance, log_transaction, log_ai_query
 )
 from app.services.ai_service import SERVICE_CATALOG, get_ai_response_with_context
 
@@ -58,6 +62,10 @@ async def chat(data: ChatIn):
     """
     Multi-turn conversational AI endpoint.
     Creates or continues a conversation with full context preservation.
+    
+    Trust model: Balance is checked on-chain (smart contract escrow).
+    Backend does NOT deduct — the user must have called request_service()
+    on-chain first, or have sufficient escrow balance.
     """
     if data.service_id not in SERVICE_CATALOG:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -87,12 +95,16 @@ async def chat(data: ChatIn):
     # Save user message
     await add_message(conversation_id, "user", data.prompt.strip())
 
-    from app.database import get_wallet_balance, deduct_wallet_balance
+    # ── On-chain balance check (smart contract escrow) ──
     current_balance = await get_wallet_balance(data.wallet_address)
     
     # Require at least 50,000 microalgo (0.05 ALGO) to start a chat
     if current_balance < 50000:
-        raise HTTPException(status_code=402, detail="Insufficient prepay balance. Please deposit ALGO.", headers={"X-Insufficient-Balance": "true"})
+        raise HTTPException(
+            status_code=402,
+            detail="Insufficient prepay balance. Please deposit ALGO.",
+            headers={"X-Insufficient-Balance": "true"}
+        )
 
     # Fetch full conversation history for context
     all_messages = await get_conversation_messages(conversation_id)
@@ -106,16 +118,14 @@ async def chat(data: ChatIn):
 
     cost_usd = round(tokens_used * COST_PER_TOKEN, 13)
     
-    # Calculate and auto-deduct off-chain balance seamlessly
-    cost_algo = cost_usd / 0.20 # Assuming 1 ALGO = $0.20
+    # Calculate cost in microALGO for logging (no deduction — that's on-chain)
+    cost_algo = cost_usd / 0.20  # Assuming 1 ALGO = $0.20
     cost_microalgo = max(0, int(cost_algo * 1_000_000))
-    await deduct_wallet_balance(data.wallet_address, cost_microalgo)
     
-    # Log deduction to transaction ledger for audit trail
-    from app.database import log_transaction
+    # ── Log usage to PostgreSQL audit trail (NOT deduction — just logging) ──
     await log_transaction(
         wallet_address=data.wallet_address,
-        tx_type="deduction",
+        tx_type="ai_usage",
         amount_microalgo=cost_microalgo,
         description=f"AI usage: {data.service_id} | {tokens_used} tokens | ${cost_usd:.8f}"
     )
@@ -123,11 +133,24 @@ async def chat(data: ChatIn):
     # Save AI response
     await add_message(conversation_id, "assistant", ai_text, tokens_used, cost_usd)
 
-    # Fire and forget "Proof of Intelligence" on-chain transaction
+    # ── Proof of Intelligence: hash prompt + response, log on-chain ──
+    prompt_hash = hashlib.sha256(data.prompt.encode()).hexdigest()
+    response_hash = hashlib.sha256(ai_text.encode()).hexdigest()
+    
+    # Fire and forget on-chain proof transaction
     from app.services.algorand_service import send_on_chain_proof
     import asyncio
     asyncio.create_task(send_on_chain_proof(data.wallet_address, ai_text))
-
+    
+    # Log AI query to PostgreSQL for analytics
+    await log_ai_query(
+        wallet_address=data.wallet_address,
+        service_id=data.service_id,
+        prompt_hash=prompt_hash,
+        response_hash=response_hash,
+        tokens_used=tokens_used,
+        conversation_id=conversation_id,
+    )
 
     # Fetch updated conversation
     conv = await get_conversation(conversation_id)
@@ -146,7 +169,7 @@ async def chat(data: ChatIn):
                 content=m["content"],
                 tokens_used=m["tokens_used"],
                 cost_usd=m["cost_usd"],
-                created_at=m["created_at"]
+                created_at=str(m["created_at"])
             )
             for m in updated_messages
         ]
@@ -165,7 +188,7 @@ async def get_history(wallet_address: str, service_id: Optional[str] = None):
             service_id=c["service_id"],
             total_tokens=c["total_tokens"],
             total_cost_usd=c["total_cost_usd"],
-            created_at=c["created_at"],
+            created_at=str(c["created_at"]),
             paid=c["paid"]
         )
         for c in convs
@@ -195,7 +218,7 @@ async def get_conv_messages(wallet_address: str, conversation_id: str):
                 content=m["content"],
                 tokens_used=m["tokens_used"],
                 cost_usd=m["cost_usd"],
-                created_at=m["created_at"]
+                created_at=str(m["created_at"])
             )
             for m in messages
         ]

@@ -145,12 +145,45 @@ const WorkspacePage = () => {
             if (isNaN(parsedAlgo) || parsedAlgo <= 0) throw new Error("Invalid deposit amount");
 
             const amountMicro = Math.floor(parsedAlgo * 1_000_000);
-            const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+
+            // Construct the Payment Transaction
+            const payTxn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
                 sender: wallet, receiver: toAddr, amount: amountMicro, suggestedParams: params,
             });
-            const txId = txn.txID().toString();
 
-            const signed = await pw.signTransaction([[{ txn, signers: [wallet] }]]);
+            // Construct the ABI Method
+            const method = new algosdk.ABIMethod({
+                name: "deposit",
+                args: [{ type: "pay", name: "payment" }],
+                returns: { type: "uint64" }
+            });
+
+            // Create a dummy signer just to satisfy the AtomicTransactionComposer
+            const dummySigner = algosdk.makeBasicAccountTransactionSigner({ 
+                addr: wallet, sk: new Uint8Array(64) 
+            });
+
+            // Build the group using ATC
+            const atc = new algosdk.AtomicTransactionComposer();
+            atc.addMethodCall({
+                appID: parseInt(paymentInfo.app_id),
+                method: method,
+                methodArgs: [{ txn: payTxn, signer: dummySigner }],
+                sender: wallet,
+                suggestedParams: params,
+                signer: dummySigner,
+                boxes: [{
+                    appIndex: parseInt(paymentInfo.app_id),
+                    name: new Uint8Array([...new TextEncoder().encode("b_"), ...algosdk.decodeAddress(wallet).publicKey])
+                }]
+            });
+
+            // Extract grouped transactions
+            const group = atc.buildGroup().map(t => t.txn);
+            const txId = group[0].txID().toString(); // Use the Payment Transaction ID for backend verification
+
+            // Sign with Pera
+            const signed = await pw.signTransaction([group.map(txn => ({ txn, signers: [wallet] }))]);
             await algodClient.sendRawTransaction(signed).do();
 
             setPayingStatus("Verifying your deposit on the Algorand Testnet...");

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Smart Contract
     algorand_app_id: str = "0"
     
+    # PostgreSQL Database
+    database_url: str = "postgresql://postgres:1234@localhost:5432/payperai"
+    
     # App
     app_secret_key: str = "replace-with-a-long-random-string-minimum-32-chars"
     session_expiry_seconds: int = 600

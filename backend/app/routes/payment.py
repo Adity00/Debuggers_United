@@ -49,5 +49,5 @@ async def fetch_session(session_id: str):
         
     return {
         "status": session["status"],
-        "expires_at": session["expires_at"]
+        "expires_at": str(session["expires_at"])
     }

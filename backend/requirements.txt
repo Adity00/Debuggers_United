@@ -1,6 +1,6 @@
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
-aiosqlite>=0.20.0
+asyncpg>=0.29.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 openai>=1.30.0
@@ -10,4 +10,4 @@ qrcode[pil]>=7.4.2
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
 gunicorn>=21.2.0
-
+py-algorand-sdk>=2.6.0
